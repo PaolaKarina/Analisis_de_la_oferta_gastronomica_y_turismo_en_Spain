@@ -3,27 +3,97 @@ import re
 import matplotlib.pyplot as plt
 import seaborn as sns 
 import numpy as np
+import plotly.express as px 
+import json 
+
+from streamlit_folium import folium_static
+from branca.element import Figure
+
+from IPython.core.display import display, HTML
+display(HTML("<style>.container { width:100% !important; }</style>"))
+
+import folium
+import folium
+from folium import Choropleth, Circle, Marker, Icon, Map
+from folium.plugins import HeatMap, MarkerCluster
+
+
+
+import codecs
+import streamlit.components.v1 as components
+
+
 
 
 #LIMPIEZA DATA TRIPADVISOR 
 
-def porcentageCOL(dataframe):
+def porcentageROW(dataframe):
     return dataframe.isnull().sum(axis=1).apply(lambda x: x/dataframe.shape[1]).sort_values(ascending=False)
 
-def porcentageROW(dataframe):
+def porcentageCOL(dataframe):
     return dataframe.isnull().sum().apply(lambda x: x/dataframe.shape[0]).sort_values(ascending=False)
 
 def dropping_col(dataframe):
-    delete = ['working_shifts_per_week', 'city','open_hours_per_week', 'terrible', 'excellent', 'very_good', 'average', 'poor', 'keywords', 'awards', 'open_days_per_week']
+    delete = ['working_shifts_per_week','open_hours_per_week', 'terrible', 'excellent', 'very_good', 
+    'average', 'poor', 'keywords', 'awards', 'open_days_per_week', 'atmosphere', 'original_location']
     return dataframe.drop( axis=1, columns= delete, inplace=True)
 
 
 
 
 
+def kw_column(dataframe,columns):
+    """
+    Creamos una lista única de las Keywords, de la columna que contenga strings, o una lista de strings
+    y podamos categorizar esas keywords en 10.
+    """
+    d=list(dataframe[str(columns)].unique())
+    de = [e for e in d if type(e) == str]
+    dee = []
+    for e in de:
+        b = e.split(',')
+        dee.append(b)
+    lista = []
+    for e in dee:
+        for x in e:
+            lista.append(x.strip())
+    lista_unica_kw = set(lista)
+    return lista_unica_kw
 
 
-#TABLAS TOTALES  SUMA TOTALES 
+
+def contador_kw(dataframe,lista_kws, column):
+    """
+    Función para que me cuente cuantas veces aparece una Keyword (palabra clave) en cada fila, es decir,
+    que me vaya sumando las filas cada vez que se encuentre con esa palabra clave y nos devuelva un diccionario. Así poder saber cuáles son las palabras(keywords) que más aparecen, quedarnos con las 9 más repetidas y 
+    agrupar el resto de keywords en una sola.
+    """
+    lis= {}
+    for kw in lista_kws:  #lista de keywords únicas 
+        lis[kw]= 0
+        for index, fila in dataframe.iterrows():  #dataframe (en este caso df2, que es el dataset limpio)
+            if kw in str(fila[str(column)]): #al iterar nos aseguramos de que además de la fila sea la columna ('top_tags')
+                lis[kw] += 1
+            else:
+                lis[kw] += 0
+    return lis
+
+
+
+
+def kw_sorted(dict_kw):
+    """
+    Devuelve el diccionario de las keywords ordenada por los valores de forma descendente
+    """
+    kw_count = dict(sorted(dict_kw.items(), key=lambda item: item[1], reverse=True))
+    return kw_count 
+
+
+
+
+
+
+#TABLAS TOTALES  SUMA TOTALES  DASHBOARDS
 
 def dosistotal_Spain_Farma(df1):
     Moderna = df1.dosisEntregadasModerna.sum()
@@ -60,7 +130,7 @@ def dosistotal_unadosis_dosiscompleta(df1):
 
 
 
-# GRÁFICAS  DOSIS X CCAA
+# GRÁFICAS  DOSIS x CCAA
 
 
 def grafica_pfizer_moderna(df1):
@@ -175,7 +245,7 @@ def graficas_ratings(df):
 
 
 def data1():
-    df1 = pd.read_csv('df1_farmaDosis.csv')
+    df1 = pd.read_csv('./DATA/data.CSV/df_tablatotal_region_restaurant.csv')
     return df1
 def data2():
     df2 = pd.read_csv('df2_dosisEntregadas.csv')
@@ -204,4 +274,123 @@ def table_trip():
 
 
 
+
+
+
+# STREAMLIT
+
+
+
+#  DATAFRAMES 
+def df_tripad():
+    data = pd.read_csv('df_tripAD_Spain.csv')
+    return data
+
+def df_international_food():
+    df_international_food = pd.read_csv('df_international_food.csv')
+    return df_international_food
+
+def df_types_of_food():
+    df_types_of_food = pd.read_csv('df_types_of_food.csv')
+    return df_types_of_food
+
+def df_geojson():
+    df_geo = json.load(open('./DATA/spain-communities.geojson'))
+    return df_geo
+
+
+
+
+
+
+
+
+
+
+
+
+
+def lista_region():    
+    data = df_tripad()  #data
+    return data.region_.unique()
+
+def lista_province(region):    
+    data = df_tripad()  #data
+    get_list_province = data[(data.region_ == region)]
+    return list(get_list_province.province_.unique())
+
+
+
+
+
+
+
+
+
+
+def kw_food():
+    deli_food =  ['pizza', 'seafood', 'steakhouse', 'sushi', 'grill', 'soups']
+    return deli_food
+
+def kw_spanish_food():
+    spanish_food = ['spanish', 'mediterranean']
+    return spanish_food
+
+def kw_street_food():
+    street_food = [ 'quick_bites', 'street_food']
+    return street_food
+
+def kw_beer_wine():
+    beer_wine =  ['brew pub', 'bar', 'pub', 'wine_bar', 'gastropub', ' dining_bars', 
+    'beer_restaurants']
+    return beer_wine
+
+#healthy_food = ['vegetarian_friendly', 'healthy', 'vegan_options', 'vegetarian_friendly', 'gluten_free_options']
+
+def kw_cafe_dessert():
+    amantes_del_dulce = ['cafe', 'dessert', 'bakeries']
+
+def kw_my_economic_food():
+    cost_food = ['cheap_eats', 'mid_range']
+    return cost_food
+
+
+
+
+
+
+
+
+def keep_palabra_clave(palabra_clave):
+    df_types_of_food = pd.read_csv('df_types_of_food.csv')
+    df_bar = df_types_of_food[(df_types_of_food[f'{palabra_clave}'] == 1)].copy()
+    return df_bar 
+
+
+def mapa_kw(df_kw, col_kw):
+    mapa = folium.Map(location= [40.463667,-3.74922], zoom_start = 5.5)
+    folium_static(mapa)
+
+    '''
+    Conseguido el datframe del KW aplicar ese dataframe específico para que te 
+    pinte en el mapa 
+    '''
+
     
+    for i,row in df_kw.iterrows():
+        restaurants = {'location': 
+                    [row['latitude'], row['longitude']],
+                   'tooltip': row['restaurant_name']}
+
+        if row[f'{col_kw}'] == 1:
+            icono = Icon (color = "green",
+                         prefix = "fa",
+                         icon = "glass",
+                         icon_color = "red")
+        else: 
+            pass
+
+        marker = Marker(**restaurants, icon = icono)
+        marker.add_to (mapa)
+
+    return mapa
