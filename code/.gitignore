@@ -1,3 +1,4 @@
 .env
-/DATA
 
+.ipynb_checkpoints
+.vscode
